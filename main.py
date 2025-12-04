@@ -8,6 +8,7 @@ import whois
 from popular_domains import emailDomains
 import streamlit as st
 from streamlit_extras.metric_cards import style_metric_cards
+from concurrent.futures import ThreadPoolExecutor  # NEW: for concurrent bulk validation
 
 st.set_page_config(
     page_title="Email verification",
@@ -26,6 +27,23 @@ def label_email(email):
         return "Risky"
     return "Valid"
 
+def validate_emails_concurrently(emails, max_workers=3):
+    """
+    Validate a list of emails using label_email in parallel and
+    return a DataFrame identical in structure to the old bulk code.
+    """
+    # Run up to max_workers validations at once
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        labels = list(executor.map(label_email, emails))
+
+    # Build result DataFrame just like before
+    result_df = pd.DataFrame(
+        list(zip(emails, labels)),
+        columns=["Email", "Label"],
+    )
+    result_df.index = range(1, len(result_df) + 1)  # start index from 1
+    return result_df
+
 def label_emails(input_file):
     file_extension = input_file.name.split('.')[-1].lower()
 
@@ -38,7 +56,6 @@ def label_emails(input_file):
     else:
         st.warning("Unsupported file format. Please provide a CSV, XLSX, or TXT file.")
 
-
 def process_csv(input_file):
     # Read the uploaded file as a DataFrame
     if input_file:
@@ -46,56 +63,53 @@ def process_csv(input_file):
             df = pd.read_csv(input_file, header=None)
         else:
             df = pd.read_csv(input_file, header=None)
-        
-        # Create a list to store the results
-        results = []
 
-        # Process each row in the input DataFrame
-        for index, row in df.iterrows():
-            email = row[0].strip()
-            label = label_email(email)
-            results.append([email, label])
+        # Extract emails in order
+        emails = []
+        for _, row in df.iterrows():
+            email = str(row[0]).strip()
+            if email:
+                emails.append(email)
 
-        # Create a new DataFrame for results
-        result_df = pd.DataFrame(results, columns=['Email', 'Label'])
-        result_df.index = range(1, len(result_df) + 1)  # Starting index from 1
+        # Validate emails in parallel with 3 workers
+        result_df = validate_emails_concurrently(emails, max_workers=3)
         return result_df
     else:
-        return pd.DataFrame(columns=['Email', 'Label'])
+        return pd.DataFrame(columns=["Email", "Label"])
 
 def process_xlsx(input_file):
     df = pd.read_excel(input_file, header=None)
-    results = []
 
-    for index, row in df.iterrows():
-        email = row[0].strip()
-        label = label_email(email)
-        results.append([email, label])
+    # Extract emails in order
+    emails = []
+    for _, row in df.iterrows():
+        email = str(row[0]).strip()
+        if email:
+            emails.append(email)
 
-    result_df = pd.DataFrame(results, columns=['Email', 'Label'])
-    result_df.index = range(1, len(result_df) + 1)  # Starting index from 1
-    
+    # Validate emails in parallel with 3 workers
+    result_df = validate_emails_concurrently(emails, max_workers=3)
+
     # Display the results in a table
     st.dataframe(result_df)
-
+    return result_df
 
 def process_txt(input_file):
     input_text = input_file.read().decode("utf-8").splitlines()
 
-    # Create a list to store the results
-    results = []
-
+    # Extract emails in order
+    emails = []
     for line in input_text:
         email = line.strip()
-        label = label_email(email)
-        results.append([email, label])
+        if email:
+            emails.append(email)
 
-    # Create a DataFrame for the results
-    result_df = pd.DataFrame(results, columns=['Email', 'Label'])
-    result_df.index = range(1, len(result_df) + 1)  # Starting index from 1
+    # Validate emails in parallel with 3 workers
+    result_df = validate_emails_concurrently(emails, max_workers=3)
 
     # Display the results in a table
     st.dataframe(result_df)
+    return result_df
 
 def main():
     with open('style.css') as f:
@@ -203,3 +217,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
