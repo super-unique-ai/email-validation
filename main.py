@@ -71,8 +71,8 @@ def process_csv(input_file):
             if email:
                 emails.append(email)
 
-        # Validate emails in parallel with 3 workers
-        result_df = validate_emails_concurrently(emails, max_workers=3)
+        # Validate emails in parallel with 10 workers
+        result_df = validate_emails_concurrently(emails, max_workers=10)
         return result_df
     else:
         return pd.DataFrame(columns=["Email", "Label"])
@@ -87,8 +87,8 @@ def process_xlsx(input_file):
         if email:
             emails.append(email)
 
-    # Validate emails in parallel with 3 workers
-    result_df = validate_emails_concurrently(emails, max_workers=3)
+    # Validate emails in parallel with 10 workers
+    result_df = validate_emails_concurrently(emails, max_workers=10)
 
     # Display the results in a table
     st.dataframe(result_df)
@@ -104,8 +104,8 @@ def process_txt(input_file):
         if email:
             emails.append(email)
 
-    # Validate emails in parallel with 3 workers
-    result_df = validate_emails_concurrently(emails, max_workers=3)
+    # Validate emails in parallel with 10 workers
+    result_df = validate_emails_concurrently(emails, max_workers=10)
 
     # Display the results in a table
     st.dataframe(result_df)
@@ -217,4 +217,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
